@@ -1,0 +1,336 @@
+<!-- O painel do controle, no estilo da Central de Controle do macOS Tahoe.
+     Medidas do Human Interface Guidelines da Apple: texto 13/11/10 pt, cores de sistema do modo escuro,
+     cantos concêntricos (raio de dentro = raio de fora − espaçamento: 26 − 12 = 14), controles em cápsula.
+     Botões com Uid="KEY_..." mandam essa tecla para a TV. -->
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Controle da TV" Width="352" SizeToContent="Height" WindowStyle="None" AllowsTransparency="True"
+        Background="Transparent" ResizeMode="NoResize" ShowInTaskbar="False" Topmost="True"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13" Foreground="#D9FFFFFF" UseLayoutRounding="True">
+  <Window.Resources>
+    <!-- Rótulos do macOS (modo escuro): branco 85%, 55%, 25%. Preenchimento 8%, 14%; separador 10%. -->
+    <SolidColorBrush x:Key="Label" Color="#D9FFFFFF"/>
+    <SolidColorBrush x:Key="Secondary" Color="#8CFFFFFF"/>
+    <SolidColorBrush x:Key="Tertiary" Color="#40FFFFFF"/>
+    <SolidColorBrush x:Key="Fill" Color="#14FFFFFF"/>
+    <SolidColorBrush x:Key="FillStrong" Color="#24FFFFFF"/>
+    <SolidColorBrush x:Key="Separator" Color="#1AFFFFFF"/>
+    <SolidColorBrush x:Key="Blue" Color="#0091FF"/>
+    <FontFamily x:Key="Icons">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+
+    <Style x:Key="Glyph" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource Icons}"/>
+      <Setter Property="FontSize" Value="14"/>
+      <Setter Property="HorizontalAlignment" Value="Center"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style x:Key="Headline" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="{StaticResource Label}"/>
+    </Style>
+
+    <Style x:Key="Sub" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="11"/>
+      <Setter Property="Foreground" Value="{StaticResource Secondary}"/>
+    </Style>
+
+    <!-- Módulo: raio 14 (26 do painel − 12 de espaçamento) -->
+    <Style x:Key="Module" TargetType="Border">
+      <Setter Property="Background" Value="{StaticResource Fill}"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Padding" Value="12"/>
+      <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+
+    <!-- Tag = raio dos cantos -->
+    <Style x:Key="Btn" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource Fill}"/>
+      <Setter Property="Foreground" Value="{StaticResource Label}"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="Padding" Value="0"/>
+      <Setter Property="Tag" Value="8"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid>
+              <Border Background="{TemplateBinding Background}"
+                      CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+              <Border x:Name="Light" Background="White" Opacity="0"
+                      CornerRadius="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"/>
+              <ContentPresenter Margin="{TemplateBinding Padding}"
+                                HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Light" Property="Opacity" Value="0.06"/></Trigger>
+              <Trigger Property="IsPressed" Value="True"><Setter TargetName="Light" Property="Opacity" Value="0.14"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Botão redondo de 36 (cápsula) -->
+    <Style x:Key="Circle" TargetType="Button" BasedOn="{StaticResource Btn}">
+      <Setter Property="Width" Value="36"/>
+      <Setter Property="Height" Value="36"/>
+      <Setter Property="Tag" Value="18"/>
+    </Style>
+
+    <Style x:Key="Link" TargetType="Button" BasedOn="{StaticResource Btn}">
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Foreground" Value="{StaticResource Blue}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Padding" Value="6,2"/>
+      <Setter Property="Tag" Value="6"/>
+    </Style>
+
+    <!-- Controle segmentado em cápsula: trilho 8%, segmento escolhido 18% -->
+    <Style x:Key="Segment" TargetType="RadioButton">
+      <Setter Property="Foreground" Value="{StaticResource Secondary}"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="Thumb" Background="Transparent" CornerRadius="12" Height="24">
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{StaticResource Label}"/></Trigger>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="Thumb" Property="Background" Value="#2EFFFFFF"/>
+                <Setter Property="Foreground" Value="{StaticResource Label}"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Window.Resources>
+
+  <!-- Painel: raio 26 (janela do Tahoe). O fundo é a tela atrás dele, desfocada no código ao abrir, como o vidro do macOS;
+       por cima, um véu escuro para o texto ficar legível, mais claro no topo, e a borda clara que imita o reflexo do Liquid Glass. -->
+  <Grid Margin="16">
+    <Grid.Effect><DropShadowEffect BlurRadius="32" ShadowDepth="6" Opacity="0.4" Color="Black"/></Grid.Effect>
+    <Border x:Name="Backdrop" CornerRadius="26" Background="#1C1C1E"/>
+  <Border CornerRadius="26" Padding="12" BorderThickness="1">
+    <Border.Background>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#8C303032" Offset="0"/>
+        <GradientStop Color="#B31C1C1E" Offset="1"/>
+      </LinearGradientBrush>
+    </Border.Background>
+    <Border.BorderBrush>
+      <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#38FFFFFF" Offset="0"/>
+        <GradientStop Color="#0FFFFFFF" Offset="1"/>
+      </LinearGradientBrush>
+    </Border.BorderBrush>
+    <StackPanel>
+
+      <!-- Cabeçalho -->
+      <Grid Margin="4,2,0,12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock x:Name="TvName" Text="TV" Style="{StaticResource Headline}" TextTrimming="CharacterEllipsis"/>
+          <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+            <Ellipse x:Name="StatusDot" Width="6" Height="6" Fill="#636366" VerticalAlignment="Center"/>
+            <TextBlock x:Name="StatusText" Text="Procurando a TV…" Style="{StaticResource Sub}" Margin="5,0,0,0"
+                       TextTrimming="CharacterEllipsis" MaxWidth="220"/>
+          </StackPanel>
+        </StackPanel>
+        <Button Grid.Column="1" Uid="KEY_POWER" Style="{StaticResource Circle}" Width="32" Height="32" Tag="16" ToolTip="Ligar ou desligar">
+          <TextBlock Style="{StaticResource Glyph}" Text="&#xE7E8;" FontSize="13"/>
+        </Button>
+      </Grid>
+
+      <!-- Abas -->
+      <Border Background="{StaticResource Fill}" CornerRadius="14" Padding="2" Margin="0,0,0,12">
+        <UniformGrid Columns="4">
+          <RadioButton x:Name="TabHome" Style="{StaticResource Segment}" GroupName="Tabs" IsChecked="True" Content="Início"/>
+          <RadioButton x:Name="TabRemote" Style="{StaticResource Segment}" GroupName="Tabs" Content="Controle"/>
+          <RadioButton x:Name="TabApps" Style="{StaticResource Segment}" GroupName="Tabs" Content="Apps"/>
+          <RadioButton x:Name="TabInputs" Style="{StaticResource Segment}" GroupName="Tabs" Content="Entradas"/>
+        </UniformGrid>
+      </Border>
+
+      <Grid>
+        <!-- Início -->
+        <StackPanel x:Name="PageHome">
+          <Border Style="{StaticResource Module}">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Border x:Name="NowIcon" Width="40" Height="40"/>
+              <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                <TextBlock x:Name="NowName" Text="Nenhum app aberto" Style="{StaticResource Headline}" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Text="Na TV agora" Style="{StaticResource Sub}" Margin="0,2,0,0"/>
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Module}">
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <Button Uid="KEY_MUTE" Style="{StaticResource Circle}" ToolTip="Mudo (M)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE74F;"/>
+              </Button>
+              <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="Som" Style="{StaticResource Headline}"/>
+                <TextBlock Text="O nível aparece na TV" Style="{StaticResource Sub}" Margin="0,1,0,0"/>
+              </StackPanel>
+              <Border Grid.Column="2" Background="{StaticResource Fill}" CornerRadius="18" Height="36">
+                <StackPanel Orientation="Horizontal">
+                  <Button Uid="KEY_VOLDOWN" Style="{StaticResource Circle}" Background="Transparent" Width="44" ToolTip="Volume − (-)">
+                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE993;"/>
+                  </Button>
+                  <Rectangle Width="1" Height="16" Fill="{StaticResource Separator}"/>
+                  <Button Uid="KEY_VOLUP" Style="{StaticResource Circle}" Background="Transparent" Width="44" ToolTip="Volume + (+)">
+                    <TextBlock Style="{StaticResource Glyph}" Text="&#xE995;"/>
+                  </Button>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Module}" Padding="12,10,12,8">
+            <StackPanel>
+              <Grid>
+                <TextBlock Text="Apps" Style="{StaticResource Headline}" VerticalAlignment="Center"/>
+                <Button x:Name="SeeApps" Style="{StaticResource Link}" Content="Mostrar tudo" HorizontalAlignment="Right" Margin="0,0,-6,0"/>
+              </Grid>
+              <UniformGrid x:Name="Favorites" Columns="4" Margin="-4,8,-4,0"/>
+            </StackPanel>
+          </Border>
+
+          <Border Style="{StaticResource Module}" Padding="12,10,12,12" Margin="0">
+            <StackPanel>
+              <Grid>
+                <TextBlock Text="Entradas" Style="{StaticResource Headline}" VerticalAlignment="Center"/>
+                <Button x:Name="SeeInputs" Style="{StaticResource Link}" Content="Mostrar tudo" HorizontalAlignment="Right" Margin="0,0,-6,0"/>
+              </Grid>
+              <UniformGrid x:Name="InputChips" Columns="4" Margin="-3,8,-3,0"/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Controle -->
+        <StackPanel x:Name="PageRemote" Visibility="Collapsed">
+          <Border Style="{StaticResource Module}" Padding="16">
+            <Grid Width="176" Height="176">
+              <Ellipse Fill="{StaticResource Fill}"/>
+              <Button Uid="KEY_UP" Style="{StaticResource Circle}" Background="Transparent" Width="52" Height="44" Tag="22"
+                      VerticalAlignment="Top" Margin="0,4,0,0" ToolTip="Cima (↑)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE70E;" FontSize="13"/>
+              </Button>
+              <Button Uid="KEY_DOWN" Style="{StaticResource Circle}" Background="Transparent" Width="52" Height="44" Tag="22"
+                      VerticalAlignment="Bottom" Margin="0,0,0,4" ToolTip="Baixo (↓)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="13"/>
+              </Button>
+              <Button Uid="KEY_LEFT" Style="{StaticResource Circle}" Background="Transparent" Width="44" Height="52" Tag="22"
+                      HorizontalAlignment="Left" Margin="4,0,0,0" ToolTip="Esquerda (←)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE76B;" FontSize="13"/>
+              </Button>
+              <Button Uid="KEY_RIGHT" Style="{StaticResource Circle}" Background="Transparent" Width="44" Height="52" Tag="22"
+                      HorizontalAlignment="Right" Margin="0,0,4,0" ToolTip="Direita (→)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE76C;" FontSize="13"/>
+              </Button>
+              <Button Uid="KEY_ENTER" Style="{StaticResource Circle}" Width="68" Height="68" Tag="34" Background="{StaticResource FillStrong}" ToolTip="OK (Enter)">
+                <TextBlock Text="OK" FontSize="13" FontWeight="SemiBold"/>
+              </Button>
+            </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Module}" Padding="8">
+            <UniformGrid Columns="5">
+              <Button Uid="KEY_RETURN" Style="{StaticResource Circle}" ToolTip="Voltar (Backspace)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE72B;"/>
+              </Button>
+              <Button Uid="KEY_HOME" Style="{StaticResource Circle}" ToolTip="Início (H)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE80F;"/>
+              </Button>
+              <Button Uid="KEY_PAUSE" Style="{StaticResource Circle}" ToolTip="Pausar">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE769;"/>
+              </Button>
+              <Button Uid="KEY_PLAY" Style="{StaticResource Circle}" ToolTip="Play">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE768;"/>
+              </Button>
+              <Button Uid="KEY_MUTE" Style="{StaticResource Circle}" ToolTip="Mudo (M)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE74F;"/>
+              </Button>
+            </UniformGrid>
+          </Border>
+
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="8"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Background="{StaticResource Fill}" CornerRadius="18" Height="36">
+              <Grid>
+                <Button Uid="KEY_VOLDOWN" Style="{StaticResource Circle}" Background="Transparent" Width="44" HorizontalAlignment="Left" ToolTip="Volume −">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE738;" FontSize="12"/>
+                </Button>
+                <TextBlock Text="Volume" Style="{StaticResource Sub}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Uid="KEY_VOLUP" Style="{StaticResource Circle}" Background="Transparent" Width="44" HorizontalAlignment="Right" ToolTip="Volume +">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE710;" FontSize="12"/>
+                </Button>
+              </Grid>
+            </Border>
+            <Border Grid.Column="2" Background="{StaticResource Fill}" CornerRadius="18" Height="36">
+              <Grid>
+                <Button Uid="KEY_CHDOWN" Style="{StaticResource Circle}" Background="Transparent" Width="44" HorizontalAlignment="Left" ToolTip="Canal −">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE70D;" FontSize="12"/>
+                </Button>
+                <TextBlock Text="Canal" Style="{StaticResource Sub}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Uid="KEY_CHUP" Style="{StaticResource Circle}" Background="Transparent" Width="44" HorizontalAlignment="Right" ToolTip="Canal +">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE70E;" FontSize="12"/>
+                </Button>
+              </Grid>
+            </Border>
+          </Grid>
+        </StackPanel>
+
+        <!-- Apps -->
+        <StackPanel x:Name="PageApps" Visibility="Collapsed">
+          <Border Background="{StaticResource Fill}" CornerRadius="14" Height="28" Margin="0,0,0,8">
+            <Grid>
+              <TextBlock Style="{StaticResource Glyph}" Text="&#xE721;" FontSize="12" Foreground="{StaticResource Secondary}"
+                         HorizontalAlignment="Left" Margin="10,0,0,0"/>
+              <TextBlock x:Name="SearchHint" Text="Buscar" Style="{StaticResource Sub}" FontSize="13" VerticalAlignment="Center"
+                         Margin="30,0,0,0" IsHitTestVisible="False"/>
+              <TextBox x:Name="Search" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Label}"
+                       CaretBrush="White" FontSize="13" VerticalContentAlignment="Center" Margin="26,0,10,0"/>
+            </Grid>
+          </Border>
+          <Border Style="{StaticResource Module}" Padding="4,8" Margin="0">
+            <ScrollViewer VerticalScrollBarVisibility="Hidden" MaxHeight="300">
+              <UniformGrid x:Name="AppsGrid" Columns="4" VerticalAlignment="Top"/>
+            </ScrollViewer>
+          </Border>
+        </StackPanel>
+
+        <!-- Entradas: lista agrupada, como nos Ajustes do macOS -->
+        <Border x:Name="PageInputs" Visibility="Collapsed" Background="{StaticResource Fill}" CornerRadius="14" Padding="4">
+          <StackPanel x:Name="InputsList"/>
+        </Border>
+      </Grid>
+    </StackPanel>
+  </Border>
+  </Grid>
+</Window>
