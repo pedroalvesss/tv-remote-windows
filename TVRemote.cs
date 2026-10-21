@@ -42,25 +42,29 @@ static class Program {
             menu.Items.Add("Sair", null, (s, e) => app.Shutdown());
             var tray = new System.Windows.Forms.NotifyIcon { Icon = TrayIcon(), Text = "Controle da TV", Visible = true, ContextMenuStrip = menu };
             tray.MouseClick += (s, e) => { if (e.Button == System.Windows.Forms.MouseButtons.Left) remote.Toggle(); };
-            tv.Changed += () => {
-                var text = tv.Name + ": " + tv.Status;
+            Action tip = () => {
+                var text = remote.Capturing ? "Setas controlam a TV · Esc para parar" : tv.Name + ": " + tv.Status;
                 tray.Text = text.Length > 63 ? text.Substring(0, 63) : text;
             };
+            tv.Changed += tip;
+            // No modo teclado o ícone fica azul, para lembrar que as setas estão indo para a TV.
+            remote.CaptureChanged += () => { tray.Icon = TrayIcon(remote.Capturing); tip(); };
             app.Startup += (s, e) => { tv.Run(); if (args.Contains("--open")) remote.Toggle(); };
             app.Run();
             tray.Visible = false;
         }
     }
 
-    static System.Drawing.Icon TrayIcon() {
+    static System.Drawing.Icon TrayIcon(bool active = false) {
         var light = (int)(Registry.GetValue(@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", "SystemUsesLightTheme", 0) ?? 0) == 1;
         var glyphs = "Segoe Fluent Icons";
         using (var f = new System.Drawing.Font(glyphs, 10)) if (f.Name != glyphs) glyphs = "Segoe MDL2 Assets";
         int size = System.Windows.Forms.SystemInformation.SmallIconSize.Width;
+        var color = active ? System.Drawing.Color.FromArgb(0, 145, 255) : light ? System.Drawing.Color.Black : System.Drawing.Color.White;
         using (var bmp = new System.Drawing.Bitmap(size, size))
         using (var g = System.Drawing.Graphics.FromImage(bmp))
         using (var font = new System.Drawing.Font(glyphs, size * 0.8f, System.Drawing.GraphicsUnit.Pixel))
-        using (var brush = new System.Drawing.SolidBrush(light ? System.Drawing.Color.Black : System.Drawing.Color.White)) {
+        using (var brush = new System.Drawing.SolidBrush(color)) {
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             var center = new System.Drawing.StringFormat { Alignment = System.Drawing.StringAlignment.Center, LineAlignment = System.Drawing.StringAlignment.Center };
             g.DrawString("\uE7F4", font, brush, new System.Drawing.RectangleF(0, 0, size, size), center);
@@ -338,6 +342,7 @@ class Remote {
                 page.Visibility = Visibility.Visible;
             };
         }
+        Find<Button>("Capture").Click += (s, e) => SetCapture(!Capturing);
         Find<Button>("SeeApps").Click += (s, e) => Find<RadioButton>("TabApps").IsChecked = true;
         Find<Button>("SeeInputs").Click += (s, e) => Find<RadioButton>("TabInputs").IsChecked = true;
         Find<TextBox>("Search").TextChanged += (s, e) => {
@@ -401,6 +406,49 @@ class Remote {
         var glass = new RenderTargetBitmap((int)(w * quarter), (int)(h * quarter), 96 * quarter, 96 * quarter, PixelFormats.Pbgra32);
         glass.Render(frame);
         Find<Border>("Backdrop").Background = new ImageBrush(glass) { Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Bottom };
+    }
+
+    delegate IntPtr HookProc(int code, IntPtr message, IntPtr data);
+    [DllImport("user32.dll")] static extern IntPtr SetWindowsHookEx(int type, HookProc proc, IntPtr module, uint thread);
+    [DllImport("user32.dll")] static extern bool UnhookWindowsHookEx(IntPtr hook);
+    [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr hook, int code, IntPtr message, IntPtr data);
+    [DllImport("kernel32.dll")] static extern IntPtr GetModuleHandle(string name);
+    public event Action CaptureChanged = delegate { };
+    HookProc hookProc; // guardado num campo para o coletor de lixo não levar o callback
+    IntPtr hook;
+
+    public bool Capturing { get { return hook != IntPtr.Zero; } }
+
+    // Modo teclado: as setas e o Enter viram o controle em qualquer janela, até apertar Esc.
+    void SetCapture(bool on) {
+        if (on == Capturing) return;
+        if (on) {
+            hookProc = OnGlobalKey;
+            hook = SetWindowsHookEx(13, hookProc, GetModuleHandle(null), 0); // 13 = teclado, baixo nível
+        } else {
+            UnhookWindowsHookEx(hook);
+            hook = IntPtr.Zero;
+        }
+        var button = Find<Button>("Capture");
+        button.Background = (Brush)win.FindResource(on ? "Blue" : "Fill");
+        button.Foreground = on ? Brushes.White : (Brush)win.FindResource("Label");
+        Find<UIElement>("CaptureHint").Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        CaptureChanged();
+    }
+
+    IntPtr OnGlobalKey(int code, IntPtr message, IntPtr data) {
+        if (code >= 0) {
+            int vk = Marshal.ReadInt32(data);
+            string key = vk == 0x25 ? "LEFT" : vk == 0x26 ? "UP" : vk == 0x27 ? "RIGHT" : vk == 0x28 ? "DOWN"
+                       : vk == 0x0D ? "ENTER" : vk == 0x1B ? "ESC" : null;
+            if (key != null) {
+                bool down = message == (IntPtr)0x100 || message == (IntPtr)0x104; // WM_KEYDOWN, WM_SYSKEYDOWN
+                if (down && key == "ESC") win.Dispatcher.BeginInvoke(new Action(() => SetCapture(false)));
+                else if (down) tv.Press("KEY_" + key);
+                return (IntPtr)1; // a tecla não chega à janela em foco
+            }
+        }
+        return CallNextHookEx(hook, code, message, data);
     }
 
     void OnKey(object sender, KeyEventArgs e) {

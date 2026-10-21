@@ -10,6 +10,7 @@ Controle remoto para TVs Samsung (Tizen) que mora na bandeja do Windows, ao lado
 
 - Acha a TV sozinho na rede.
 - **Controle:** direcional, OK, voltar, início, play/pausa, volume, mudo e canal. Também funciona pelo teclado.
+- **Modo teclado:** o botão redondo com o teclado, no canto do direcional, faz as setas e o Enter controlarem a TV de qualquer janela, mesmo com o painel fechado. O ícone da bandeja fica azul enquanto isso. Esc desliga.
 - **Apps:** mostra os apps instalados com os ícones oficiais, diz qual está aberto na TV e abre o app com um clique.
 - **Entradas:** troca para HDMI 1, 2, 3 ou TV aberta.
 - **Ligar:** com a TV desligada, o botão de ligar manda um sinal pela rede (Wake-on-LAN).
@@ -43,7 +44,9 @@ O ícone de TV aparece na bandeja. Clique esquerdo abre o painel; clique direito
 | H | Início |
 | M | Mudo |
 | + / − | Volume |
-| Esc | Fechar o painel |
+| Esc | Fechar o painel (no modo teclado: desligar o modo) |
+
+Esses atalhos valem com o painel aberto. No modo teclado, as setas, o Enter e o Esc funcionam em qualquer janela.
 
 ## Como funciona
 

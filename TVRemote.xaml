@@ -231,6 +231,20 @@
         <!-- Controle -->
         <StackPanel x:Name="PageRemote" Visibility="Collapsed">
           <Border Style="{StaticResource Module}" Padding="16">
+            <Grid>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+              <!-- Liga o controle pelas setas do teclado, em qualquer janela, até apertar Esc -->
+              <Button x:Name="Capture" Style="{StaticResource Circle}" Width="28" Height="28" Tag="14"
+                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0"
+                      ToolTip="Controlar pelas setas do teclado (Esc para parar)">
+                <TextBlock Style="{StaticResource Glyph}" Text="&#xE765;" FontSize="13"/>
+              </Button>
+              <TextBlock x:Name="CaptureHint" Grid.Row="1" Visibility="Collapsed" Style="{StaticResource Sub}"
+                         Foreground="{StaticResource Blue}" HorizontalAlignment="Center" Margin="0,12,0,0"
+                         Text="Setas e Enter controlam a TV · Esc para parar"/>
             <Grid Width="176" Height="176">
               <Ellipse Fill="{StaticResource Fill}"/>
               <Button Uid="KEY_UP" Style="{StaticResource Circle}" Background="Transparent" Width="52" Height="44" Tag="22"
@@ -252,6 +266,7 @@
               <Button Uid="KEY_ENTER" Style="{StaticResource Circle}" Width="68" Height="68" Tag="34" Background="{StaticResource FillStrong}" ToolTip="OK (Enter)">
                 <TextBlock Text="OK" FontSize="13" FontWeight="SemiBold"/>
               </Button>
+            </Grid>
             </Grid>
           </Border>
 
