@@ -138,6 +138,7 @@
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
         <StackPanel VerticalAlignment="Center">
           <TextBlock x:Name="TvName" Text="TV" Style="{StaticResource Headline}" TextTrimming="CharacterEllipsis"/>
@@ -147,7 +148,12 @@
                        TextTrimming="CharacterEllipsis" MaxWidth="220"/>
           </StackPanel>
         </StackPanel>
-        <Button Grid.Column="1" Uid="KEY_POWER" Style="{StaticResource Circle}" Width="32" Height="32" Tag="16" ToolTip="Ligar ou desligar">
+        <Button x:Name="Mirror" Grid.Column="1" Style="{StaticResource Circle}" Width="32" Height="32" Tag="16" Margin="0,0,8,0"
+                ToolTip="Espelhar a tela do PC na TV (Win+K)">
+          <TextBlock Style="{StaticResource Glyph}" Text="&#xEC15;" FontSize="13"/>
+        </Button>
+        <!-- Vermelho com a TV ligada (desliga), verde com ela em espera ou desligada (liga) -->
+        <Button x:Name="Power" Grid.Column="2" Uid="KEY_POWER" Style="{StaticResource Circle}" Width="32" Height="32" Tag="16" ToolTip="Ligar">
           <TextBlock Style="{StaticResource Glyph}" Text="&#xE7E8;" FontSize="13"/>
         </Button>
       </Grid>
@@ -162,21 +168,68 @@
         </UniformGrid>
       </Border>
 
+      <!-- As abas rolam quando passam da altura da tela (o limite é posto no código) -->
+      <ScrollViewer x:Name="Pages" VerticalScrollBarVisibility="Hidden">
       <Grid>
         <!-- Início -->
         <StackPanel x:Name="PageHome">
-          <Border Style="{StaticResource Module}">
+          <!-- Aparece quando a TV abre o teclado na tela (busca, senha…): o texto vai inteiro ao apertar Enter -->
+          <Border x:Name="TypeModule" Style="{StaticResource Module}" Visibility="Collapsed">
+            <StackPanel>
+              <TextBlock Text="Teclado da TV" Style="{StaticResource Headline}"/>
+              <Border Background="{StaticResource Fill}" CornerRadius="14" Height="28" Margin="0,10,0,0">
+                <Grid>
+                  <TextBlock x:Name="TypeHint" Text="Digite e aperte Enter" Style="{StaticResource Sub}" FontSize="13"
+                             VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False"/>
+                  <TextBox x:Name="TypeBox" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Label}"
+                           CaretBrush="White" FontSize="13" VerticalContentAlignment="Center" Margin="8,0,10,0"/>
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
+
+          <!-- Aparece quando há um link do YouTube copiado, ou colado na busca de apps -->
+          <Border x:Name="LinkModule" Style="{StaticResource Module}" Visibility="Collapsed">
             <Grid>
               <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
-              <Border x:Name="NowIcon" Width="40" Height="40"/>
-              <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                <TextBlock x:Name="NowName" Text="Nenhum app aberto" Style="{StaticResource Headline}" TextTrimming="CharacterEllipsis"/>
-                <TextBlock Text="Na TV agora" Style="{StaticResource Sub}" Margin="0,2,0,0"/>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="Link do YouTube" Style="{StaticResource Headline}"/>
+                <TextBlock x:Name="LinkText" Style="{StaticResource Sub}" Margin="0,2,8,0" TextTrimming="CharacterEllipsis"/>
               </StackPanel>
+              <Button x:Name="PlayLink" Grid.Column="1" Style="{StaticResource Btn}" Background="{StaticResource Blue}" Foreground="White"
+                      Height="28" Tag="14" Padding="12,0" FontSize="12" FontWeight="SemiBold" Content="Abrir na TV"/>
             </Grid>
+          </Border>
+
+          <Border Style="{StaticResource Module}">
+            <StackPanel>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="Auto"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border x:Name="NowIcon" Width="40" Height="40"/>
+                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                  <TextBlock x:Name="NowName" Text="Nenhum app aberto" Style="{StaticResource Headline}" TextTrimming="CharacterEllipsis"/>
+                  <TextBlock Text="Na TV agora" Style="{StaticResource Sub}" Margin="0,2,0,0"/>
+                </StackPanel>
+              </Grid>
+              <!-- Aparece sozinho quando há um app aberto: anterior, play/pausa e próximo -->
+              <UniformGrid x:Name="Media" Columns="3" Margin="0,12,0,0" Visibility="Collapsed">
+                <Button Uid="KEY_REWIND" Style="{StaticResource Btn}" Height="32" Tag="16" Margin="0,0,4,0" ToolTip="Anterior ou voltar">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE892;"/>
+                </Button>
+                <Button x:Name="PlayPause" Style="{StaticResource Btn}" Height="32" Tag="16" Margin="4,0" ToolTip="Play ou pausa">
+                  <TextBlock x:Name="PlayPauseGlyph" Style="{StaticResource Glyph}" Text="&#xE769;"/>
+                </Button>
+                <Button Uid="KEY_FF" Style="{StaticResource Btn}" Height="32" Tag="16" Margin="4,0,0,0" ToolTip="Próximo ou avançar">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE893;"/>
+                </Button>
+              </UniformGrid>
+            </StackPanel>
           </Border>
 
           <Border Style="{StaticResource Module}">
@@ -205,6 +258,17 @@
                 </StackPanel>
               </Border>
             </Grid>
+          </Border>
+
+          <!-- O próprio app manda desligar na hora: funciona mesmo se a TV não tiver timer -->
+          <Border Style="{StaticResource Module}" Padding="12,10,12,12">
+            <StackPanel>
+              <Grid>
+                <TextBlock Text="Desligar a TV" Style="{StaticResource Headline}" VerticalAlignment="Center"/>
+                <TextBlock x:Name="SleepText" Style="{StaticResource Sub}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+              </Grid>
+              <UniformGrid x:Name="SleepChoices" Columns="3" Margin="-3,8,-3,0"/>
+            </StackPanel>
           </Border>
 
           <Border Style="{StaticResource Module}" Padding="12,10,12,8">
@@ -239,12 +303,12 @@
               <!-- Liga o controle pelas setas do teclado, em qualquer janela, até apertar Esc -->
               <Button x:Name="Capture" Style="{StaticResource Circle}" Width="28" Height="28" Tag="14"
                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-6,-6,0"
-                      ToolTip="Controlar pelas setas do teclado (Esc para parar)">
+                      ToolTip="Controlar pelo teclado: setas, Enter, Backspace, volume e mídia (Esc para parar)">
                 <TextBlock Style="{StaticResource Glyph}" Text="&#xE765;" FontSize="13"/>
               </Button>
               <TextBlock x:Name="CaptureHint" Grid.Row="1" Visibility="Collapsed" Style="{StaticResource Sub}"
                          Foreground="{StaticResource Blue}" HorizontalAlignment="Center" Margin="0,12,0,0"
-                         Text="Setas e Enter controlam a TV · Esc para parar"/>
+                         Text="Teclado controlando a TV · Esc para parar"/>
             <Grid Width="176" Height="176">
               <Ellipse Fill="{StaticResource Fill}"/>
               <Button Uid="KEY_UP" Style="{StaticResource Circle}" Background="Transparent" Width="52" Height="44" Tag="22"
@@ -319,6 +383,31 @@
               </Grid>
             </Border>
           </Grid>
+
+          <Border Style="{StaticResource Module}" Padding="8" Margin="0,8,0,0">
+            <StackPanel>
+              <UniformGrid Columns="4">
+                <Button Uid="KEY_MENU" Style="{StaticResource Circle}" ToolTip="Menu">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE700;"/>
+                </Button>
+                <Button Uid="KEY_TOOLS" Style="{StaticResource Circle}" ToolTip="Ferramentas">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE713;"/>
+                </Button>
+                <Button Uid="KEY_SUB_TITLE" Style="{StaticResource Circle}" ToolTip="Legendas">
+                  <TextBlock Style="{StaticResource Glyph}" Text="&#xE7F0;"/>
+                </Button>
+                <Button x:Name="TypeOpen" Style="{StaticResource Circle}" ToolTip="Digitar na TV">
+                  <TextBlock Text="Aa" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+              </UniformGrid>
+              <UniformGrid Columns="4" Margin="0,8,0,0">
+                <Button Uid="KEY_RED" Style="{StaticResource Btn}" Height="16" Tag="8" Margin="10,0" Background="#FF4245" ToolTip="Vermelho"/>
+                <Button Uid="KEY_GREEN" Style="{StaticResource Btn}" Height="16" Tag="8" Margin="10,0" Background="#30D158" ToolTip="Verde"/>
+                <Button Uid="KEY_YELLOW" Style="{StaticResource Btn}" Height="16" Tag="8" Margin="10,0" Background="#FFD600" ToolTip="Amarelo"/>
+                <Button Uid="KEY_CYAN" Style="{StaticResource Btn}" Height="16" Tag="8" Margin="10,0" Background="#0091FF" ToolTip="Azul"/>
+              </UniformGrid>
+            </StackPanel>
+          </Border>
         </StackPanel>
 
         <!-- Apps -->
@@ -345,6 +434,7 @@
           <StackPanel x:Name="InputsList"/>
         </Border>
       </Grid>
+      </ScrollViewer>
     </StackPanel>
   </Border>
   </Grid>

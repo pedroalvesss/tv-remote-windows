@@ -99,9 +99,11 @@ class Tv {
         new[] { "3202010022079", null },                   // Internet
     };
     public string Ip, Name = "TV", Country, Status = "Procurando a TV…", State = "off";
+    public bool On; // tela ligada; em espera a TV continua na rede, mas com a tela apagada
     public List<TvApp> Apps = new List<TvApp>();
     public event Action Changed = delegate { };
     public event Action AppsChanged = delegate { };
+    public event Action KeyboardOpened = delegate { }, KeyboardClosed = delegate { }; // teclado na tela da TV
     ClientWebSocket ws;
     bool paired, rescan, refreshing;
     readonly HashSet<string> iconsTried = new HashSet<string>();
@@ -127,7 +129,7 @@ class Tv {
                 if (found != null) Save("ip", Ip = found);
                 else if (Ip == null) { Set("Nenhuma TV Samsung na rede", "off"); await Task.Delay(10000); continue; }
             }
-            if (!await ReadInfo()) { Set("TV desligada", "off"); await Task.Delay(5000); continue; }
+            if (!await ReadInfo()) { On = false; Set("TV desligada", "off"); await Task.Delay(5000); continue; }
             var apps = RefreshApps();
             try { await Session(); }
             catch (Exception e) { Set("Sem conexão (" + e.GetBaseException().Message + ")", "error"); }
@@ -160,21 +162,55 @@ class Tv {
         await RefreshApps();
     }
 
+    // Texto inteiro de uma vez no teclado aberto na tela da TV; o fim confirma, como o Enter do teclado dela.
+    public async void Type(string text) {
+        await Send("{\"method\":\"ms.remote.control\",\"params\":{\"Cmd\":\"" + Convert.ToBase64String(Encoding.UTF8.GetBytes(text)) +
+                   "\",\"DataOfCmd\":\"base64\",\"TypeOfRemote\":\"SendInputString\"}}");
+        await Send("{\"method\":\"ms.remote.control\",\"params\":{\"TypeOfRemote\":\"SendInputEnd\"}}");
+    }
+
+    // Abre um vídeo no YouTube da TV pelo DIAL (porta 8080), o mesmo caminho do "transmitir" do celular.
+    public async Task<bool> PlayYouTube(string video) {
+        if (Ip == null) return false;
+        try {
+            var reply = await Http.PostAsync("http://" + Ip + ":8080/ws/apps/YouTube", new StringContent("v=" + video, Encoding.UTF8, "text/plain"));
+            return reply.IsSuccessStatusCode;
+        } catch { return false; }
+    }
+
     public async Task RefreshApps() {
         if (Ip == null || refreshing) return;
         refreshing = true;
         try {
-            var replies = await Task.WhenAll(Catalog.Select(c => Fetch("http://" + Ip + ":8001/api/v2/applications/" + c[0])));
+            var info = Fetch("http://" + Ip + ":8001/api/v2/");
+            var replies = await Task.WhenAll(Catalog.Select(c => Probe("http://" + Ip + ":8001/api/v2/applications/" + c[0])));
+            var json = await info;
+            var on = json != null && Field(json, "PowerState") == "on";
+            if (on != On) { On = on; Changed(); }
             var apps = new List<TvApp>();
             for (int i = 0; i < Catalog.Length; i++) {
-                var name = replies[i] == null ? null : Field(replies[i], "name");
-                if (name == null) continue;
+                if (replies[i] == null) {
+                    // A TV demorou para responder: mantém o app como estava, para a lista não piscar.
+                    var known = Apps.FirstOrDefault(a => a.Id == Catalog[i][0]);
+                    if (known != null) apps.Add(known);
+                    continue;
+                }
+                var name = Field(replies[i], "name");
+                if (name == null) continue; // não instalado
                 apps.Add(new TvApp { Id = Catalog[i][0], Name = name.Split(new[] { " - " }, StringSplitOptions.None)[0],
                                      Visible = Regex.IsMatch(replies[i], "\"visible\"\\s*:\\s*true") });
             }
             Func<List<TvApp>, string> key = list => string.Join(",", list.Select(a => a.Id + a.Visible));
             if (key(apps) != key(Apps)) { Apps = apps; AppsChanged(); FetchIcons(); }
         } finally { refreshing = false; }
+    }
+
+    // Como Fetch, mas separa "não existe" (404 → texto vazio) de "não respondeu" (null).
+    static async Task<string> Probe(string url) {
+        try {
+            var reply = await Http.GetAsync(url);
+            return reply.StatusCode == HttpStatusCode.NotFound ? "" : reply.IsSuccessStatusCode ? await reply.Content.ReadAsStringAsync() : null;
+        } catch { return null; }
     }
 
     public static string IconFile(string id) {
@@ -230,6 +266,10 @@ class Tv {
             } else if (ev == "ms.channel.unauthorized") {
                 Set("A TV recusou o acesso", "error");
                 return;
+            } else if (ev == "ms.remote.imeStart") {
+                KeyboardOpened();
+            } else if (ev == "ms.remote.imeEnd") {
+                KeyboardClosed();
             }
         }
     }
@@ -247,6 +287,7 @@ class Tv {
         if (json == null || !json.Contains("Tizen")) return false;
         Name = Field(json, "name") ?? "TV";
         Country = Field(json, "countryCode");
+        On = Field(json, "PowerState") == "on";
         var mac = Field(json, "wifiMac");
         if (mac != null) Save("mac", mac);
         return true;
@@ -343,12 +384,35 @@ class Remote {
             };
         }
         Find<Button>("Capture").Click += (s, e) => SetCapture(!Capturing);
+        Find<Button>("Mirror").Click += (s, e) => Mirror();
+        Find<Button>("PlayPause").Click += (s, e) => PlayPause();
+        Find<Button>("PlayLink").Click += (s, e) => OpenLink();
+        Find<Button>("TypeOpen").Click += (s, e) => ShowKeyboard();
         Find<Button>("SeeApps").Click += (s, e) => Find<RadioButton>("TabApps").IsChecked = true;
         Find<Button>("SeeInputs").Click += (s, e) => Find<RadioButton>("TabInputs").IsChecked = true;
-        Find<TextBox>("Search").TextChanged += (s, e) => {
-            Find<UIElement>("SearchHint").Visibility = Find<TextBox>("Search").Text == "" ? Visibility.Visible : Visibility.Collapsed;
+        var search = Find<TextBox>("Search");
+        search.TextChanged += (s, e) => {
+            if (ShowLink(search.Text)) { search.Text = ""; Find<RadioButton>("TabHome").IsChecked = true; return; }
+            Find<UIElement>("SearchHint").Visibility = search.Text == "" ? Visibility.Visible : Visibility.Collapsed;
             RenderApps();
         };
+        var typeBox = Find<TextBox>("TypeBox");
+        typeBox.TextChanged += (s, e) => Find<UIElement>("TypeHint").Visibility = typeBox.Text == "" ? Visibility.Visible : Visibility.Collapsed;
+        typeBox.KeyDown += (s, e) => {
+            if (e.Key != Key.Enter) return;
+            tv.Type(typeBox.Text);
+            typeBox.Text = "";
+            Find<UIElement>("TypeModule").Visibility = Visibility.Collapsed;
+            e.Handled = true;
+        };
+        foreach (var minutes in new[] { 30, 60, 120 }) {
+            var chip = new Button { Style = btn, Tag = "14", Height = 28, Margin = new Thickness(3), DataContext = minutes,
+                                    Content = new TextBlock { Text = minutes < 60 ? minutes + " min" : minutes / 60 + " h", FontSize = 12 } };
+            var choice = minutes;
+            chip.Click += (s, e) => SetSleep(choice == sleepMinutes ? 0 : choice); // tocar de novo no mesmo cancela
+            Find<Panel>("SleepChoices").Children.Add(chip);
+        }
+        sleep.Tick += (s, e) => { if (tv.On) tv.Press("KEY_POWER"); SetSleep(0); };
 
         win.Deactivated += (s, e) => { win.Hide(); hiddenAt = DateTime.Now; poll.Stop(); };
         win.SizeChanged += (s, e) => Place(); // a altura muda com a aba: o painel fica preso ao canto
@@ -356,6 +420,8 @@ class Remote {
         poll.Tick += (s, e) => tv.RefreshApps();
         tv.Changed += RenderStatus;
         tv.AppsChanged += RenderApps;
+        tv.KeyboardOpened += ShowKeyboard;
+        tv.KeyboardClosed += () => Find<UIElement>("TypeModule").Visibility = Visibility.Collapsed;
         RenderInputs();
         RenderApps();
     }
@@ -363,12 +429,86 @@ class Remote {
     public void Toggle() {
         // Clicar no ícone com o painel aberto já o fecha (perde o foco); não reabre logo em seguida.
         if (win.IsVisible || (DateTime.Now - hiddenAt).TotalMilliseconds < 300) { win.Hide(); return; }
+        Open();
+    }
+
+    void Open() {
+        // Cabeçalho, abas, espaçamentos e a margem da sombra somam uns 170: o resto da altura da tela fica para a aba.
+        Find<ScrollViewer>("Pages").MaxHeight = SystemParameters.WorkArea.Height - 170;
         Backdrop();
+        try { ShowLink(Clipboard.GetText()); } catch { } // a área de transferência pode estar ocupada por outro programa
         win.Show();
         Place();
         win.Activate();
         poll.Start();
         tv.RefreshApps();
+    }
+
+    // A TV abriu o teclado na tela (ou o botão Aa foi tocado): o painel abre com o campo pronto para digitar.
+    void ShowKeyboard() {
+        Find<RadioButton>("TabHome").IsChecked = true;
+        Find<UIElement>("TypeModule").Visibility = Visibility.Visible;
+        if (!win.IsVisible) Open();
+        win.Activate();
+        Find<TextBox>("TypeBox").Focus();
+    }
+
+    static readonly Regex YouTubeLink = new Regex(@"(?:youtube\.com/(?:watch\?(?:\S*&)?v=|shorts/|live/|embed/)|youtu\.be/)([\w-]{11})");
+    string video, played; // vídeo do link à mostra; o último aberto não volta a aparecer
+
+    bool ShowLink(string text) {
+        var m = YouTubeLink.Match(text ?? "");
+        bool show = m.Success && m.Groups[1].Value != played;
+        if (show) {
+            video = m.Groups[1].Value;
+            Find<TextBlock>("LinkText").Text = "youtu.be/" + video;
+        }
+        Find<UIElement>("LinkModule").Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        return show;
+    }
+
+    async void OpenLink() {
+        if (await tv.PlayYouTube(video)) {
+            played = video;
+            Find<UIElement>("LinkModule").Visibility = Visibility.Collapsed;
+        } else {
+            Find<TextBlock>("LinkText").Text = "A TV não abriu o vídeo";
+        }
+    }
+
+    bool paused; // a TV não diz se está tocando: o botão alterna entre pausar e continuar
+
+    void PlayPause() {
+        tv.Press(paused ? "KEY_PLAY" : "KEY_PAUSE");
+        paused = !paused;
+        Find<TextBlock>("PlayPauseGlyph").Text = paused ? "\uE768" : "\uE769";
+    }
+
+    readonly DispatcherTimer sleep = new DispatcherTimer();
+    int sleepMinutes; // 0 = sem timer
+
+    // Desligar com timer: o próprio app manda o comando na hora, então funciona mesmo se a TV não tiver essa opção.
+    void SetSleep(int minutes) {
+        sleep.Stop();
+        sleepMinutes = minutes;
+        if (minutes > 0) { sleep.Interval = TimeSpan.FromMinutes(minutes); sleep.Start(); }
+        Find<TextBlock>("SleepText").Text = minutes > 0 ? "às " + DateTime.Now.AddMinutes(minutes).ToString("HH:mm") : "";
+        foreach (var chip in Find<Panel>("SleepChoices").Children.OfType<Button>()) {
+            bool active = (int)chip.DataContext == minutes;
+            chip.Background = (Brush)win.FindResource(active ? "Blue" : "Fill");
+            chip.Foreground = active ? Brushes.White : (Brush)win.FindResource("Label");
+        }
+    }
+
+    [DllImport("user32.dll")] static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
+
+    // Espelhar a tela: abre o "Transmitir" do Windows (Win+K), que acha a TV e espelha por Miracast.
+    void Mirror() {
+        win.Hide();
+        keybd_event(0x5B, 0, 0, UIntPtr.Zero); // Windows
+        keybd_event(0x4B, 0, 0, UIntPtr.Zero); // K
+        keybd_event(0x4B, 0, 2, UIntPtr.Zero);
+        keybd_event(0x5B, 0, 2, UIntPtr.Zero);
     }
 
     void Place() {
@@ -419,7 +559,7 @@ class Remote {
 
     public bool Capturing { get { return hook != IntPtr.Zero; } }
 
-    // Modo teclado: as setas e o Enter viram o controle em qualquer janela, até apertar Esc.
+    // Modo teclado: setas, Enter, Backspace e as teclas de volume e mídia viram o controle em qualquer janela, até apertar Esc.
     void SetCapture(bool on) {
         if (on == Capturing) return;
         if (on) {
@@ -438,12 +578,29 @@ class Remote {
 
     IntPtr OnGlobalKey(int code, IntPtr message, IntPtr data) {
         if (code >= 0) {
-            int vk = Marshal.ReadInt32(data);
-            string key = vk == 0x25 ? "LEFT" : vk == 0x26 ? "UP" : vk == 0x27 ? "RIGHT" : vk == 0x28 ? "DOWN"
-                       : vk == 0x0D ? "ENTER" : vk == 0x1B ? "ESC" : null;
+            string key = null;
+            switch (Marshal.ReadInt32(data)) {
+                case 0x25: key = "LEFT"; break;
+                case 0x26: key = "UP"; break;
+                case 0x27: key = "RIGHT"; break;
+                case 0x28: key = "DOWN"; break;
+                case 0x0D: key = "ENTER"; break;
+                case 0x08: key = "RETURN"; break;   // Backspace
+                case 0x1B: key = "ESC"; break;
+                case 0xAD: key = "MUTE"; break;     // teclas de volume e mídia do teclado
+                case 0xAE: key = "VOLDOWN"; break;
+                case 0xAF: key = "VOLUP"; break;
+                case 0xB0: key = "FF"; break;       // próxima faixa
+                case 0xB1: key = "REWIND"; break;   // faixa anterior
+                case 0xB2: key = "STOP"; break;
+                case 0xB3: key = "PLAYPAUSE"; break;
+            }
+            // Digitando no próprio painel (teclado da TV, busca): as teclas ficam com ele.
+            if (key != null && win.IsActive && Keyboard.FocusedElement is TextBox) key = null;
             if (key != null) {
                 bool down = message == (IntPtr)0x100 || message == (IntPtr)0x104; // WM_KEYDOWN, WM_SYSKEYDOWN
                 if (down && key == "ESC") win.Dispatcher.BeginInvoke(new Action(() => SetCapture(false)));
+                else if (down && key == "PLAYPAUSE") win.Dispatcher.BeginInvoke(new Action(PlayPause));
                 else if (down) tv.Press("KEY_" + key);
                 return (IntPtr)1; // a tecla não chega à janela em foco
             }
@@ -473,9 +630,16 @@ class Remote {
     }
 
     void RenderStatus() {
+        bool connected = tv.State == "ok";
         Find<TextBlock>("TvName").Text = tv.Name;
-        Find<TextBlock>("StatusText").Text = tv.Status;
-        Find<Ellipse>("StatusDot").Fill = Hex(tv.State == "ok" ? "#30D158" : tv.State == "wait" ? "#FF9230" : tv.State == "error" ? "#FF4245" : "#636366");
+        Find<TextBlock>("StatusText").Text = connected ? (tv.On ? "Ligada" : "Em espera") : tv.Status;
+        Find<Ellipse>("StatusDot").Fill = Hex(connected ? (tv.On ? "#30D158" : "#636366")
+            : tv.State == "wait" ? "#FF9230" : tv.State == "error" ? "#FF4245" : "#636366");
+        var power = Find<Button>("Power");
+        power.Background = tv.On ? Hex("#33FF4245") : (Brush)win.FindResource("Fill");
+        power.Foreground = Hex(tv.On ? "#FF4245" : "#30D158");
+        power.ToolTip = tv.On ? "Desligar" : "Ligar";
+        AutomationProperties.SetName(power, (string)power.ToolTip);
     }
 
     void RenderApps() {
@@ -489,6 +653,7 @@ class Remote {
 
         var now = tv.Apps.FirstOrDefault(a => a.Visible);
         Find<TextBlock>("NowName").Text = now != null ? now.Name : "Nenhum app aberto";
+        Find<UIElement>("Media").Visibility = now != null ? Visibility.Visible : Visibility.Collapsed;
         Find<Border>("NowIcon").Child = now != null ? Icon(now, 40)
             : new Border { CornerRadius = new CornerRadius(9), Background = (Brush)win.FindResource("Fill"),
                            Child = Glyph("\uE7F4", 16, (Brush)win.FindResource("Secondary")) };

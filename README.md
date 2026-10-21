@@ -9,11 +9,16 @@ Controle remoto para TVs Samsung (Tizen) que mora na bandeja do Windows, ao lado
 ## O que faz
 
 - Acha a TV sozinho na rede.
-- **Controle:** direcional, OK, voltar, início, play/pausa, volume, mudo e canal. Também funciona pelo teclado.
-- **Modo teclado:** o botão redondo com o teclado, no canto do direcional, faz as setas e o Enter controlarem a TV de qualquer janela, mesmo com o painel fechado. O ícone da bandeja fica azul enquanto isso. Esc desliga.
+- **Controle:** direcional, OK, voltar, início, play/pausa, volume, mudo e canal, mais menu, ferramentas, legendas e as teclas coloridas. Também funciona pelo teclado.
+- **Modo teclado:** o botão redondo com o teclado, no canto do direcional, faz as setas, o Enter, o Backspace e as teclas de volume e mídia do seu teclado controlarem a TV de qualquer janela, mesmo com o painel fechado. O ícone da bandeja fica azul enquanto isso. Esc desliga.
+- **Digitar na TV:** quando a TV abre o teclado na tela (busca do YouTube, Netflix, senha de Wi-Fi), o painel abre com um campo de texto. Você digita no PC e o Enter manda o texto inteiro. O botão **Aa** abre o mesmo campo a qualquer hora.
+- **Link do YouTube:** copie um link do YouTube e abra o painel: aparece **Abrir na TV**, que toca o vídeo no YouTube da TV. Colar o link na busca de apps também funciona.
+- **Mídia:** com um app aberto na TV, aparecem anterior, play/pausa e próximo.
 - **Apps:** mostra os apps instalados com os ícones oficiais, diz qual está aberto na TV e abre o app com um clique.
 - **Entradas:** troca para HDMI 1, 2, 3 ou TV aberta.
-- **Ligar:** com a TV desligada, o botão de ligar manda um sinal pela rede (Wake-on-LAN).
+- **Desligar com timer:** 30 min, 1 h ou 2 h. O próprio app manda desligar na hora, então funciona mesmo se a TV não tiver essa opção (o PC precisa estar ligado).
+- **Ligar e desligar:** o cabeçalho mostra se a TV está ligada ou em espera, e o botão fica vermelho (desligar) ou verde (ligar). Com a TV desligada, ele liga pela rede (Wake-on-LAN).
+- **Espelhar a tela:** abre o **Transmitir** do Windows (Win+K), que acha a TV e espelha a tela do PC nela.
 
 Testado em uma Samsung Q60C (2023, Tizen 7). Deve funcionar nas Samsung de 2016 em diante, mas não foi testado nelas.
 
@@ -46,11 +51,12 @@ O ícone de TV aparece na bandeja. Clique esquerdo abre o painel; clique direito
 | + / − | Volume |
 | Esc | Fechar o painel (no modo teclado: desligar o modo) |
 
-Esses atalhos valem com o painel aberto. No modo teclado, as setas, o Enter e o Esc funcionam em qualquer janela.
+Esses atalhos valem com o painel aberto. No modo teclado, as setas, o Enter, o Backspace, o Esc e as teclas de volume e mídia funcionam em qualquer janela.
 
 ## Como funciona
 
-- **Teclas:** WebSocket da própria TV (`wss://TV:8002`, canal `samsung.remote.control`), com o token que a TV dá na primeira permissão.
+- **Teclas:** WebSocket da própria TV (`wss://TV:8002`, canal `samsung.remote.control`), com o token que a TV dá na primeira permissão. Pela mesma conexão a TV avisa quando abre o teclado na tela (`ms.remote.imeStart`) e recebe o texto (`SendInputString`).
+- **YouTube:** o vídeo abre pelo DIAL da TV (`http://TV:8080/ws/apps/YouTube`), o mesmo caminho do "transmitir" do celular.
 - **Apps:** a TV não lista os apps instalados nos modelos novos, mas responde por ID (`http://TV:8001/api/v2/applications/<id>`). O app pergunta por uma lista fixa e abre o app pelo mesmo endereço. Para incluir um app, acrescente o ID dele em `Catalog`, em `TVRemote.cs`.
 - **Ícones:** vêm da busca pública da App Store (`itunes.apple.com/lookup`), na loja do país da TV, e ficam guardados no PC. Nenhum ícone vai no repositório.
 - **Visual:** medidas do Human Interface Guidelines da Apple: texto 13/11 pt, cores de sistema do modo escuro, cantos concêntricos (26 no painel, 14 nos módulos) e controles em cápsula. O fundo de vidro é a tela atrás do painel, desfocada no momento em que ele abre.
