@@ -1,6 +1,17 @@
 # TV Remote para Windows
 
-Controle de TV Samsung (Tizen) na bandeja do Windows. `TVRemote.cs` (conexão e painel) e `TVRemote.xaml` (visual), compilados por `build.cmd` com o .NET Framework do próprio Windows (C# 5: sem `?.`, `$""` nem `nameof`). Detalhes de como funciona estão no README.
+Controle de TV Samsung (Tizen) na bandeja do Windows, em WPF. `build.cmd` compila tudo em `src/` com o .NET Framework do próprio Windows. A estrutura de pastas e como funciona estão no README.
+
+## Convenções
+
+- **C# 5** (o compilador do .NET Framework): sem `?.`, `$""`, `nameof`, `=>` em membros nem filtros de exceção.
+- **Nomes** (convenções da Microsoft para C#): PascalCase em tipos e membros públicos, `_campo` em campos privados, `s_campo` em campos estáticos privados, constantes em PascalCase. Sem abreviações.
+- **Formato:** chaves no estilo Allman, uma instrução por linha, `var` só quando o tipo é óbvio pelo lado direito.
+- **Comentários** em português, numa linha própria, explicando o porquê.
+- **Um tipo por arquivo**, namespace igual à pasta (`TvRemote.Tv`, `TvRemote.Ui`, `TvRemote.Interop`). `Tv/` não conhece nada de tela; chamadas à API do Windows ficam só em `Interop/NativeMethods.cs` (regra CA1060).
+- **Desempenho:** brushes e efeitos criados em código são congelados (`Freeze`); nada de `Effect` em elementos grandes que mudam (recalcula a cada passada do mouse). Para conferir, `tools/measure.ps1` mede memória, CPU e o tempo para o painel abrir.
+- O `build.cmd` precisa de fim de linha CRLF (o `.gitattributes` garante).
+- **Escapes `\uE...`:** as ferramentas de edição às vezes gravam o caractere em vez do escape. Depois de editar, confira se não ficou caractere invisível da faixa E000–F8FF nos `.cs`.
 
 ## Pendências
 

@@ -116,8 +116,10 @@
   <!-- Painel: raio 26 (janela do Tahoe). O fundo é a tela atrás dele, desfocada no código ao abrir, como o vidro do macOS;
        por cima, um véu escuro para o texto ficar legível, mais claro no topo, e a borda clara que imita o reflexo do Liquid Glass. -->
   <Grid Margin="16">
-    <Grid.Effect><DropShadowEffect BlurRadius="32" ShadowDepth="6" Opacity="0.4" Color="Black"/></Grid.Effect>
-    <Border x:Name="Backdrop" CornerRadius="26" Background="#1C1C1E"/>
+    <!-- A sombra fica só no fundo, separado do conteúdo: passar o mouse num botão não recalcula a sombra do painel inteiro. -->
+    <Border x:Name="Backdrop" CornerRadius="26" Background="#1C1C1E">
+      <Border.Effect><DropShadowEffect BlurRadius="32" ShadowDepth="6" Opacity="0.4" Color="Black"/></Border.Effect>
+    </Border>
   <Border CornerRadius="26" Padding="12" BorderThickness="1">
     <Border.Background>
       <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">

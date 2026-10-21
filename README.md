@@ -65,10 +65,26 @@ O IP, o endereço MAC e o token da TV ficam em `%APPDATA%\TVRemote`, no seu PC.
 
 ## Arquivos
 
-| Arquivo | O que é |
-| --- | --- |
-| `TVRemote.cs` | A conexão com a TV e o painel |
-| `TVRemote.xaml` | O visual do painel |
-| `build.cmd` | Compila o `TVRemote.exe` |
+```
+build.cmd                 compila o TVRemote.exe
+src/
+  Program.cs              início: junta a TV, o painel e o ícone da bandeja
+  Tv/                     conversa com a TV (sem nada de tela)
+    TvClient.cs           achar na rede, parear, teclas, apps, YouTube, teclado da TV
+    AppCatalog.cs         apps procurados na TV e os ícones da App Store
+    TvApp.cs, ConnectionState.cs, JsonField.cs, LocalStore.cs
+  Ui/                     o que aparece na tela
+    RemoteWindow.xaml     o visual do painel
+    RemoteWindow.cs       o painel: abas, botões, link, timer, espelhar
+    AppIcons.cs           ícones dos apps
+    GlassBackdrop.cs      o fundo de vidro
+    KeyboardCapture.cs    o modo teclado
+    TrayIcon.cs           o ícone da bandeja
+    Palette.cs            cores reaproveitadas
+  Interop/
+    NativeMethods.cs      chamadas à API do Windows
+tools/
+  measure.ps1             mede memória, CPU e o tempo para o painel abrir
+```
 
 Projeto independente, sem ligação com a Samsung ou a Apple. Nomes e ícones de apps pertencem aos donos.
